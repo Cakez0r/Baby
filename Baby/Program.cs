@@ -64,6 +64,7 @@ namespace Baby
             string message = "Found a url: " + url.AbsoluteUri;
             Console.WriteLine(message);
             s_urlLog.WriteLine(message);
+            s_urlLog.Flush();
         }
 
         static void LogEmail(EmailAddress email)
@@ -71,6 +72,7 @@ namespace Baby
             string message = "Found an email: " + email.Email;
             Console.WriteLine(message);
             s_emailLog.WriteLine(message);
+            s_emailLog.Flush();
         }
 
         static void LogError(Exception error)
@@ -78,6 +80,7 @@ namespace Baby
             string message = "Encountered an error: " + error.Message;
             Console.WriteLine(error);
             s_errorLog.WriteLine(message);
+            s_errorLog.Flush();
         }
     }
 }
