@@ -157,11 +157,18 @@ namespace Baby.Crawler
                 Emails = s_emptyEmailList;
                 Urls = s_emptyUriList;
 
-                //Kick off the web page download
-                m_webpageProvider.GetWebpageAsync(Url, HandleSuccessfulDownload, HandleFailedDownload);
+                if (Url != null)
+                {
+                    //Kick off the web page download
+                    m_webpageProvider.GetWebpageAsync(Url, HandleSuccessfulDownload, HandleFailedDownload);
 
-                //Update state
-                State = WebpageScraperState.Scraping;
+                    //Update state
+                    State = WebpageScraperState.Scraping;
+                }
+                else
+                {
+                    HandleFailedDownload(new Exception("URL Provider failed to provide a URL to scrape."));
+                }
             }
             else
             {
