@@ -7,6 +7,6 @@ namespace Baby.Crawler.PageFetching
 {
     public interface IAsyncUrlListProvider
     {
-        void GetUrlListAsync(Action<IList<Uri>> completionCallback, Action<Exception> errorCallback);
+        void GetUrlListAsync(Action<IList<Uri>, IAsyncUrlListProvider> completionCallback, Action<Exception, IAsyncUrlListProvider> errorCallback);
     }
 }

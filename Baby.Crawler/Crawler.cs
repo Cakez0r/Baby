@@ -125,6 +125,11 @@ namespace Baby.Crawler
         IAsyncWebpageProvider m_webpageProvider;
 
         /// <summary>
+        /// Object used for determining which URL to scrape
+        /// </summary>
+        IUrlProvider m_urlProvider;
+
+        /// <summary>
         /// Initialize statics
         /// </summary>
         static WebpageScraper()
@@ -140,6 +145,7 @@ namespace Baby.Crawler
         /// <param name="url">The URL to begin traversing at</param>
         public WebpageScraper(IUrlProvider urlProvider, IAsyncWebpageProvider webpageProvider)
         {
+            m_urlProvider = urlProvider;
             Url = urlProvider.GetUri();
             m_webpageProvider = webpageProvider;
             State = WebpageScraperState.Idle;
@@ -167,7 +173,7 @@ namespace Baby.Crawler
                 }
                 else
                 {
-                    HandleFailedDownload(new Exception("URL Provider failed to provide a URL to scrape."));
+                    HandleFailedDownload(new Exception("URL Provider failed to provide a URL to scrape."), m_webpageProvider);
                 }
             }
             else
@@ -180,7 +186,7 @@ namespace Baby.Crawler
         /// Kick off any logic for parsing a page download
         /// </summary>
         /// <param name="html">The html source code of the downloaded page</param>
-        private void HandleSuccessfulDownload(string html)
+        private void HandleSuccessfulDownload(string html, IAsyncWebpageProvider provider)
         {
             //Update list of links
             Urls = ExtractLinks(html);
@@ -201,7 +207,7 @@ namespace Baby.Crawler
         /// <summary>
         /// Handle any errors if a web page failed to download
         /// </summary>
-        private void HandleFailedDownload(Exception ex)
+        private void HandleFailedDownload(Exception ex, IAsyncWebpageProvider provider)
         {
             //Set the exception that occurred
             Error = ex;
@@ -339,14 +345,14 @@ namespace Baby.Crawler
         /// <summary>
         /// Helper function to call the async callbacks when a scrape completes
         /// </summary>
-        private static void DispatchCallbackForScraper<T>(WebpageScraper scraper, Action<T> completionCallback, Action<Exception> errorCallback, T completionParameter)
+        private static void DispatchCallbackForScraper<T, U>(WebpageScraper scraper, Action<T, U> completionCallback, Action<Exception, U> errorCallback, T completionParameter, U provider)
         {
             if (scraper.State == WebpageScraperState.FinishedError)
             {
                 //Dispatch error callback
                 if (errorCallback != null)
                 {
-                    errorCallback(scraper.Error);
+                    errorCallback(scraper.Error, provider);
                 }
             }
             else if (scraper.State == WebpageScraperState.FinishedSuccess)
@@ -354,7 +360,7 @@ namespace Baby.Crawler
                 //Dispatch success callback
                 if (completionCallback != null)
                 {
-                    completionCallback(completionParameter);
+                    completionCallback(completionParameter, provider);
                 }
             }
         }
@@ -362,17 +368,17 @@ namespace Baby.Crawler
         /// <summary>
         /// Begins an asynchronous get of urls.
         /// </summary>
-        public void GetUrlListAsync(Action<IList<Uri>> completionCallback, Action<Exception> errorCallback)
+        public void GetUrlListAsync(Action<IList<Uri>, IAsyncUrlListProvider> completionCallback, Action<Exception, IAsyncUrlListProvider> errorCallback)
         {
             if (State == WebpageScraperState.FinishedError || State == WebpageScraperState.FinishedSuccess)
             {
                 //If we completed, then run callbacks
-                DispatchCallbackForScraper<IList<Uri>>(this, completionCallback, errorCallback, this.Urls);
+                DispatchCallbackForScraper<IList<Uri>, IAsyncUrlListProvider>(this, completionCallback, errorCallback, this.Urls, this);
             }
             else
             {
                 //If we haven't completed, hook up any callbacks
-                ScrapeCompletionCallback += (scraper) => DispatchCallbackForScraper<IList<Uri>>(this, completionCallback, errorCallback, this.Urls);
+                ScrapeCompletionCallback += (scraper) => DispatchCallbackForScraper<IList<Uri>, IAsyncUrlListProvider>(this, completionCallback, errorCallback, this.Urls, this);
             }
 
             if (State == WebpageScraperState.Idle)
@@ -385,17 +391,17 @@ namespace Baby.Crawler
         /// <summary>
         /// Begins an asynchronous get of email addresses
         /// </summary>
-        public void GetEmailListAsync(Action<IList<EmailAddress>> completionCallback, Action<Exception> errorCallback)
+        public void GetEmailListAsync(Action<IList<EmailAddress>, IAsyncEmailListProvider> completionCallback, Action<Exception, IAsyncEmailListProvider> errorCallback)
         {
             if (State == WebpageScraperState.FinishedError || State == WebpageScraperState.FinishedSuccess)
             {
                 //If we completed, then run callbacks
-                DispatchCallbackForScraper<IList<EmailAddress>>(this, completionCallback, errorCallback, this.Emails);
+                DispatchCallbackForScraper<IList<EmailAddress>, IAsyncEmailListProvider>(this, completionCallback, errorCallback, this.Emails, this);
             }
             else
             {
                 //If we haven't completed, hook up any callbacks
-                ScrapeCompletionCallback += (scraper) => DispatchCallbackForScraper<IList<EmailAddress>>(this, completionCallback, errorCallback, this.Emails);
+                ScrapeCompletionCallback += (scraper) => DispatchCallbackForScraper<IList<EmailAddress>, IAsyncEmailListProvider>(this, completionCallback, errorCallback, this.Emails, this);
             }
 
             if (State == WebpageScraperState.Idle)

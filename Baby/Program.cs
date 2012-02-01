@@ -7,6 +7,7 @@ using Baby.Data;
 using System.IO;
 using Baby.UrlFiltering;
 using System.Threading;
+using Baby.Crawler.PageFetching;
 
 namespace Baby
 {
@@ -94,11 +95,11 @@ namespace Baby
 
             s_scraperCount++;
 
-            scraper.GetEmailListAsync(HandleEmailList, HandleError);
-            scraper.GetUrlListAsync(HandleUrlList, HandleError);
+            scraper.GetEmailListAsync(HandleEmailList, HandleError<IAsyncEmailListProvider>);
+            scraper.GetUrlListAsync(HandleUrlList, HandleError<IAsyncUrlListProvider>);
         }
 
-        static void HandleEmailList(IList<EmailAddress> emails)
+        static void HandleEmailList(IList<EmailAddress> emails, IAsyncEmailListProvider provider)
         {
             foreach (EmailAddress email in emails)
             {
@@ -106,7 +107,7 @@ namespace Baby
             }
         }
 
-        static void HandleUrlList(IList<Uri> urls)
+        static void HandleUrlList(IList<Uri> urls, IAsyncUrlListProvider provider)
         {
             //Well this is going to chew ALL of your system resources... but fun :)
             foreach (Uri url in urls)
@@ -122,7 +123,7 @@ namespace Baby
             s_scraperCount--;
         }
 
-        static void HandleError(Exception ex)
+        static void HandleError<T>(Exception ex, T provider)
         {
             LogError(ex);
             s_scraperCount--;

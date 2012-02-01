@@ -8,6 +8,6 @@ namespace Baby.Crawler.EmailFetching
 {
     public interface IAsyncEmailListProvider
     {
-        void GetEmailListAsync(Action<IList<EmailAddress>> completionCallback, Action<Exception> errorCallback);
+        void GetEmailListAsync(Action<IList<EmailAddress>, IAsyncEmailListProvider> completionCallback, Action<Exception, IAsyncEmailListProvider> errorCallback);
     }
 }

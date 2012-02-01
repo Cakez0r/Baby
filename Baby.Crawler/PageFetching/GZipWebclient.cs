@@ -18,7 +18,7 @@ namespace Baby.Crawler.PageFetching
         /// <summary>
         /// Begins asynchronously fetching a webpage
         /// </summary>
-        public void GetWebpageAsync(Uri url, Action<string> completionCallback, Action<Exception> errorCallback)
+        public void GetWebpageAsync(Uri url, Action<string, IAsyncWebpageProvider> completionCallback, Action<Exception, IAsyncWebpageProvider> errorCallback)
         {
             this.DownloadStringCompleted += (sender, e) =>
                 {
@@ -26,11 +26,11 @@ namespace Baby.Crawler.PageFetching
                     {
                         if (e.Error == null)
                         {
-                            completionCallback(e.Result);
+                            completionCallback(e.Result, this);
                         }
                         else
                         {
-                            errorCallback(e.Error);
+                            errorCallback(e.Error, this);
                         }
                     }
                 };
