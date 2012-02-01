@@ -56,8 +56,6 @@
     <Compile Include="IOCContainer.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="UrlFiltering\HashsetBlacklist.cs" />
-    <Compile Include="UrlFiltering\IUrlBlacklist.cs" />
     <Compile Include="UrlFiltering\StandardUrlFilterRules.cs" />
     <Compile Include="UrlFiltering\URLFilter.cs" />
   </ItemGroup>

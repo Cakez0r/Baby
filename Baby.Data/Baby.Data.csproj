@@ -43,8 +43,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="InMemoryUrlProvider.cs" />
-    <Compile Include="IUrlProvider.cs" />
+    <Compile Include="UrlBlacklist\HashsetBlacklist.cs" />
+    <Compile Include="UrlBlacklist\IUrlBlacklist.cs" />
+    <Compile Include="UrlProvider\InMemoryUrlProvider.cs" />
+    <Compile Include="UrlProvider\IUrlProvider.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
