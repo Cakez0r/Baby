@@ -1,13 +1,13 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Net;
+using log4net;
 
 namespace Baby.Crawler.PageFetching
 {
     public class GZipWebClient : WebClient, IAsyncWebpageProvider
     {
+        private static ILog s_logger = LogManager.GetLogger(typeof(IAsyncWebpageProvider));
+
         protected override WebRequest GetWebRequest(Uri address)
         {
             HttpWebRequest request = base.GetWebRequest(address) as HttpWebRequest;
@@ -20,16 +20,20 @@ namespace Baby.Crawler.PageFetching
         /// </summary>
         public void GetWebpageAsync(Uri url, Action<string, IAsyncWebpageProvider> completionCallback, Action<Exception, IAsyncWebpageProvider> errorCallback)
         {
+            s_logger.DebugFormat("Beginning fetch of {0}", url.AbsoluteUri);
+
             this.DownloadStringCompleted += (sender, e) =>
                 {
                     if (completionCallback != null)
                     {
                         if (e.Error == null)
                         {
+                            s_logger.DebugFormat("Completed fetch of {0}", url.AbsoluteUri);
                             completionCallback(e.Result, this);
                         }
                         else
                         {
+                            s_logger.WarnFormat("Fetch of {0} failed: {1}", url.AbsoluteUri, e.Error);
                             errorCallback(e.Error, this);
                         }
                     }

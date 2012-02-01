@@ -1,14 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Collections.ObjectModel;
 using System.Text.RegularExpressions;
-using System.Net;
-using Baby.Shared;
-using Baby.Crawler.PageFetching;
 using Baby.Crawler.EmailFetching;
+using Baby.Crawler.PageFetching;
 using Baby.Data;
+using Baby.Shared;
+using log4net;
 
 namespace Baby.Crawler
 {
@@ -17,6 +15,8 @@ namespace Baby.Crawler
     /// </summary>
     public class WebpageScraper : IAsyncEmailAndUrlListProvider
     {
+        private static ILog s_logger = LogManager.GetLogger(typeof(WebpageScraper));
+
         /// <summary>
         /// Used to represent the current state of a scraper
         /// </summary>
@@ -72,6 +72,14 @@ namespace Baby.Crawler
         {
             get;
             private set;
+        }
+
+        /// <summary>
+        /// The data source of this crawler (for IAsync interfaces)
+        /// </summary>
+        public string Source
+        {
+            get { return Url != null ? Url.AbsoluteUri : "[NONE]"; }
         }
 
         /// <summary>
@@ -149,6 +157,8 @@ namespace Baby.Crawler
             Url = urlProvider.GetUri();
             m_webpageProvider = webpageProvider;
             State = WebpageScraperState.Idle;
+
+            s_logger.DebugFormat("Scraper created for url {0}", Url != null ? Url.AbsoluteUri : "NULL URL");
         }
 
         /// <summary>
@@ -159,6 +169,8 @@ namespace Baby.Crawler
             //Only start if scraper hasn't already ran
             if (State == WebpageScraperState.Idle)
             {
+                s_logger.DebugFormat("Starting scrape of URL {0}", Url != null ? Url.AbsoluteUri : "NULL URL");
+
                 //Don't show any results yet
                 Emails = s_emptyEmailList;
                 Urls = s_emptyUriList;
@@ -189,13 +201,15 @@ namespace Baby.Crawler
         private void HandleSuccessfulDownload(string html, IAsyncWebpageProvider provider)
         {
             //Update list of links
-            Urls = ExtractLinks(html);
+            Urls = ExtractLinks(ref html);
 
             //Update list of emails
-            Emails = ExtractEmails(html);
+            Emails = ExtractEmails(ref html);
 
             //Update state
             State = WebpageScraperState.FinishedSuccess;
+
+            s_logger.DebugFormat("Sucessfully scraped URL {0}", Url != null ? Url.AbsoluteUri : "NULL URL");
 
             //Notify of completion
             if (ScrapeCompletionCallback != null)
@@ -215,6 +229,8 @@ namespace Baby.Crawler
             //Update state
             State = WebpageScraperState.FinishedError;
 
+            s_logger.WarnFormat("Failed to scrape URL {0}: {1}", Url != null ? Url.AbsoluteUri : "NULL URL", ex);
+
             //Notify of completion
             if (ScrapeCompletionCallback != null)
             {
@@ -227,7 +243,7 @@ namespace Baby.Crawler
         /// </summary>
         /// <param name="html">The html source code for the page</param>
         /// <returns>A list of links found on the page</returns>
-        private List<Uri> ExtractLinks(string html)
+        private List<Uri> ExtractLinks(ref string html)
         {
             List<Uri> links = new List<Uri>();
 
@@ -292,11 +308,13 @@ namespace Baby.Crawler
                 //Add the link to the results list if it is a valid Uri and move on
                 try
                 {
-                    links.Add(new Uri(link));
+                    Uri newUrl = new Uri(link);
+                    links.Add(newUrl);
+                    s_logger.DebugFormat("Found link {0} on url {1}", newUrl.AbsoluteUri, Url.AbsoluteUri);
                 }
                 catch
                 {
-                    
+                    s_logger.DebugFormat("Matched an invalid link {0} found on url {1}", match.Value, Url.AbsoluteUri);
                 }
                 startIndex = match.Index + 1;
             }
@@ -309,7 +327,7 @@ namespace Baby.Crawler
         /// </summary>
         /// <param name="html">The html source code of the page</param>
         /// <returns>A list of email addresses found on the page</returns>
-        private static List<EmailAddress> ExtractEmails(string html)
+        private List<EmailAddress> ExtractEmails(ref string html)
         {
             List<EmailAddress> emails = new List<EmailAddress>();
 
@@ -321,6 +339,8 @@ namespace Baby.Crawler
                 //Add the email to the results and keep scanning
                 emails.Add(new EmailAddress(match.Value));
                 startIndex = match.Index + match.Value.Length;
+
+                s_logger.DebugFormat("Found an email {0} on url {1}", match.Value, Url.AbsoluteUri);
             }
 
             return emails;

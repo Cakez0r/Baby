@@ -1,13 +1,14 @@
-﻿using Baby.Crawler;
-using Microsoft.Practices.Unity;
+﻿using System;
 using System.Collections.Generic;
-using Baby.Crawler.EmailFetching;
-using System;
-using Baby.Data;
 using System.IO;
-using Baby.UrlFiltering;
 using System.Threading;
+using Baby.Crawler;
+using Baby.Crawler.EmailFetching;
 using Baby.Crawler.PageFetching;
+using Baby.Data;
+using Baby.UrlFiltering;
+using log4net;
+using Microsoft.Practices.Unity;
 
 namespace Baby
 {
@@ -19,33 +20,42 @@ namespace Baby
     {
         static InMemoryUrlProvider urlProvider = new InMemoryUrlProvider(new Uri[] { new Uri("http://www.4chan.org") });
 
-        static StreamWriter s_emailLog = new StreamWriter(File.OpenWrite("emails.txt"));
-        static StreamWriter s_errorLog = new StreamWriter(File.OpenWrite("errors.txt"));
-        static StreamWriter s_urlLog = new StreamWriter(File.OpenWrite("urls.txt"));
-
         static URLFilter s_urlFilter;
         static IUrlBlacklist s_visitedUrls;
 
-        const int SCRAPER_LIMIT = 50;
+        const int SCRAPER_LIMIT = 1;
         static int s_scraperCount = 0;
+
+        private static ILog s_logger = LogManager.GetLogger(typeof(Program));
+        private static ILog s_emailLogger = LogManager.GetLogger("emails");
+        private static ILog s_urlLogger = LogManager.GetLogger("urls");
+
+        static void InitializeLogging()
+        {
+            log4net.Config.XmlConfigurator.Configure(new FileInfo("log4net.config"));
+        }
 
         static void Main(string[] args)
         {
-            //Test!
+            InitializeLogging();
+            s_logger.Info("Baby is starting!");
+
+            s_logger.DebugFormat("Scraper limit set to {0}", SCRAPER_LIMIT);
+
+            s_logger.Debug("Registering URL provider...");
             IOCContainer.Instance.RegisterInstance<IUrlProvider>(urlProvider);
 
+            s_logger.Debug("Resolving url blacklist...");
             s_visitedUrls = IOCContainer.Instance.Resolve<IUrlBlacklist>();
+            s_visitedUrls.Name = "VisitedUrls";
 
             s_urlFilter = MakeUrlFilter(s_visitedUrls);
-
-            SpawnScraper();
-
-            Console.WriteLine("Get ready...");
 
             while (true)
             {
                 if (s_scraperCount < SCRAPER_LIMIT)
                 {
+                    s_logger.DebugFormat("Scraper count is at [{0} / {1}]. Spawning a new scraper...", s_scraperCount, SCRAPER_LIMIT);
                     SpawnScraper();
                 }
 
@@ -55,36 +65,38 @@ namespace Baby
 
         static URLFilter MakeUrlFilter(IUrlBlacklist visitedUrlBlacklist)
         {
+            s_logger.Debug("Setting up URL filter...");
+
             URLFilter filter = new URLFilter();
 
             //Probably a better way to do this with Accept header...
-            filter.AddRule(StandardUrlFilterRules.MakeRejectExtensionRule("exe"));
-            filter.AddRule(StandardUrlFilterRules.MakeRejectExtensionRule("css"));
-            filter.AddRule(StandardUrlFilterRules.MakeRejectExtensionRule("png"));
-            filter.AddRule(StandardUrlFilterRules.MakeRejectExtensionRule("gif"));
-            filter.AddRule(StandardUrlFilterRules.MakeRejectExtensionRule("jpg"));
-            filter.AddRule(StandardUrlFilterRules.MakeRejectExtensionRule("zip"));
-            filter.AddRule(StandardUrlFilterRules.MakeRejectExtensionRule("7z"));
-            filter.AddRule(StandardUrlFilterRules.MakeRejectExtensionRule("rar"));
-            filter.AddRule(StandardUrlFilterRules.MakeRejectExtensionRule("gz"));
-            filter.AddRule(StandardUrlFilterRules.MakeRejectExtensionRule("avi"));
-            filter.AddRule(StandardUrlFilterRules.MakeRejectExtensionRule("mpg"));
-            filter.AddRule(StandardUrlFilterRules.MakeRejectExtensionRule("mp3"));
-            filter.AddRule(StandardUrlFilterRules.MakeRejectExtensionRule("pdf"));
-            filter.AddRule(StandardUrlFilterRules.MakeRejectExtensionRule("dmg"));
-            filter.AddRule(StandardUrlFilterRules.MakeRejectExtensionRule("iso"));
-            filter.AddRule(StandardUrlFilterRules.MakeRejectExtensionRule("ico"));
-            filter.AddRule(StandardUrlFilterRules.MakeRejectExtensionRule("rss"));
+            filter.AddRule("Reject .exe", StandardUrlFilterRules.MakeRejectExtensionRule("exe"));
+            filter.AddRule("Reject .css", StandardUrlFilterRules.MakeRejectExtensionRule("css"));
+            filter.AddRule("Reject .png", StandardUrlFilterRules.MakeRejectExtensionRule("png"));
+            filter.AddRule("Reject .gif", StandardUrlFilterRules.MakeRejectExtensionRule("gif"));
+            filter.AddRule("Reject .jpg", StandardUrlFilterRules.MakeRejectExtensionRule("jpg"));
+            filter.AddRule("Reject .zip", StandardUrlFilterRules.MakeRejectExtensionRule("zip"));
+            filter.AddRule("Reject .7z", StandardUrlFilterRules.MakeRejectExtensionRule("7z"));
+            filter.AddRule("Reject .rar", StandardUrlFilterRules.MakeRejectExtensionRule("rar"));
+            filter.AddRule("Reject .gz", StandardUrlFilterRules.MakeRejectExtensionRule("gz"));
+            filter.AddRule("Reject .avi", StandardUrlFilterRules.MakeRejectExtensionRule("avi"));
+            filter.AddRule("Reject .mpg", StandardUrlFilterRules.MakeRejectExtensionRule("mpg"));
+            filter.AddRule("Reject .mp3", StandardUrlFilterRules.MakeRejectExtensionRule("mp3"));
+            filter.AddRule("Reject .pdf", StandardUrlFilterRules.MakeRejectExtensionRule("pdf"));
+            filter.AddRule("Reject .dmg", StandardUrlFilterRules.MakeRejectExtensionRule("dmg"));
+            filter.AddRule("Reject .iso", StandardUrlFilterRules.MakeRejectExtensionRule("iso"));
+            filter.AddRule("Reject .ico", StandardUrlFilterRules.MakeRejectExtensionRule("ico"));
+            filter.AddRule("Reject .rss", StandardUrlFilterRules.MakeRejectExtensionRule("rss"));
 
-            filter.AddRule(StandardUrlFilterRules.RejectHashUrls);
+            filter.AddRule("Reject hash urls", StandardUrlFilterRules.RejectHashUrls);
 
-            filter.AddRule(StandardUrlFilterRules.RejectJavascriptUrl);
+            filter.AddRule("Reject JS urls", StandardUrlFilterRules.RejectJavascriptUrl);
 
-            filter.AddRule(StandardUrlFilterRules.RejectRecursiveUrls);
+            filter.AddRule("Reject recursive urls", StandardUrlFilterRules.RejectRecursiveUrls);
 
-            filter.AddRule(StandardUrlFilterRules.MakeRejectUrlInBlacklistRule(visitedUrlBlacklist));
+            filter.AddRule("Already visited", StandardUrlFilterRules.MakeRejectUrlInBlacklistRule(visitedUrlBlacklist));
 
-            filter.AddRule(StandardUrlFilterRules.MakeUrlMustContainRule("4chan.org"));
+            filter.AddRule("Must be on 4chan.org", StandardUrlFilterRules.MakeUrlMustContainRule("4chan.org"));
 
             return filter;
         }
@@ -101,22 +113,27 @@ namespace Baby
 
         static void HandleEmailList(IList<EmailAddress> emails, IAsyncEmailListProvider provider)
         {
+            s_logger.DebugFormat("Email list received from scraper ({0})", provider.Source);
             foreach (EmailAddress email in emails)
             {
-                LogEmail(email);
+                s_emailLogger.Info(email.Email);
             }
         }
 
         static void HandleUrlList(IList<Uri> urls, IAsyncUrlListProvider provider)
         {
-            //Well this is going to chew ALL of your system resources... but fun :)
+            s_logger.DebugFormat("Url list received from scraper ID ", provider.Source);
             foreach (Uri url in urls)
             {
                 if (s_urlFilter.IsUrlValid(url))
                 {
-                    LogUrl(url);
+                    s_urlLogger.Debug("Accepting URL: " + url.AbsoluteUri);
                     urlProvider.EnqueueUrl(url);
                     s_visitedUrls.AddUrlToBlacklist(url); //Flag that we've already visited this url
+                }
+                else
+                {
+                    s_urlLogger.Debug("Rejecting URL: " + url.AbsoluteUri);
                 }
             }
 
@@ -125,37 +142,8 @@ namespace Baby
 
         static void HandleError<T>(Exception ex, T provider)
         {
-            LogError(ex);
+            s_logger.ErrorFormat("Exception occurred on scraper ({0}: {1}", (provider as WebpageScraper).Source, ex);
             s_scraperCount--;
-        }
-
-        static void LogUrl(Uri url)
-        {
-            string message = "Found a url: " + url.AbsoluteUri;
-            Console.ForegroundColor = ConsoleColor.White;
-            Console.WriteLine(message);
-            s_urlLog.WriteLine(message);
-            s_urlLog.Flush();
-        }
-
-        static void LogEmail(EmailAddress email)
-        {
-            string message = "Found an email: " + email.Email;
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine(message);
-            Console.ForegroundColor = ConsoleColor.White;
-            s_emailLog.WriteLine(message);
-            s_emailLog.Flush();
-        }
-
-        static void LogError(Exception error)
-        {
-            string message = "Encountered an error: " + error.Message;
-            Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine(error);
-            Console.ForegroundColor = ConsoleColor.White;
-            s_errorLog.WriteLine(message);
-            s_errorLog.Flush();
         }
     }
 }

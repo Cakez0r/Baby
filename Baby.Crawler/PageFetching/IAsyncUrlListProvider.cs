@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
 namespace Baby.Crawler.PageFetching
 {
     public interface IAsyncUrlListProvider
     {
+        string Source { get; }
+
         void GetUrlListAsync(Action<IList<Uri>, IAsyncUrlListProvider> completionCallback, Action<Exception, IAsyncUrlListProvider> errorCallback);
     }
 }
