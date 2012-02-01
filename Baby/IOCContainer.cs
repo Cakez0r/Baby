@@ -6,6 +6,7 @@ using Microsoft.Practices.Unity;
 using Baby.Crawler;
 using Baby.Crawler.PageFetching;
 using Baby.Data;
+using Baby.UrlFiltering;
 
 namespace Baby
 {
@@ -22,6 +23,7 @@ namespace Baby
             s_container = new UnityContainer();
             s_container.RegisterType<IAsyncWebpageProvider, GZipWebClient>();
             s_container.RegisterType<IAsyncEmailAndUrlListProvider, WebpageScraper>();
+            s_container.RegisterType<IUrlBlacklist, HashsetBlacklist>();
         }
     }
 }
