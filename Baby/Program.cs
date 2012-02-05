@@ -19,7 +19,7 @@ namespace Baby
     /// </summary>
     class Program
     {
-        static InMemoryUrlProvider urlProvider = new InMemoryUrlProvider(new Uri[] { new Uri("http://www.4chan.org") });
+        static IUrlProvider s_urlProvider = new RedisUrlProvider();
 
         static URLFilter s_urlFilter;
         static IUrlBlacklist s_visitedUrls;
@@ -48,7 +48,8 @@ namespace Baby
             s_logger.DebugFormat("Scraper limit set to {0}", SCRAPER_LIMIT);
 
             s_logger.Debug("Registering URL provider...");
-            IOCContainer.Instance.RegisterInstance<IUrlProvider>(urlProvider);
+            IOCContainer.Instance.RegisterInstance<IUrlProvider>(s_urlProvider);
+            s_urlProvider.EnqueueUrl(new Uri("http://www.4chan.org"));
 
             s_logger.Debug("Resolving url blacklist...");
             s_visitedUrls = IOCContainer.Instance.Resolve<IUrlBlacklist>();
@@ -140,7 +141,7 @@ namespace Baby
                 if (s_urlFilter.IsUrlValid(url))
                 {
                     s_urlLogger.Debug("Accepting URL: " + url.AbsoluteUri);
-                    urlProvider.EnqueueUrl(url);
+                    s_urlProvider.EnqueueUrl(url);
                     s_visitedUrls.AddUrlToBlacklist(url); //Flag that we've already visited this url
                 }
                 else

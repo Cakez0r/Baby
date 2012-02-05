@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Baby.UrlFiltering
+namespace Baby.Data
 {
     public interface IUrlBlacklist
     {

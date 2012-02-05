@@ -10,9 +10,9 @@ namespace Baby.Data
 
         Queue<Uri> m_urls;
 
-        public InMemoryUrlProvider(IEnumerable<Uri> initialQueue)
+        public InMemoryUrlProvider()
         {
-            m_urls = new Queue<Uri>(initialQueue);
+            m_urls = new Queue<Uri>();
         }
 
         public void EnqueueUrl(Uri url)

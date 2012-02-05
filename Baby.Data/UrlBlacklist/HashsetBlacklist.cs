@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using log4net;
 
-namespace Baby.UrlFiltering
+namespace Baby.Data
 {
     public class HashsetBlacklist : IUrlBlacklist
     {

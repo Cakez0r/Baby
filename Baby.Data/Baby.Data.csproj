@@ -31,10 +31,14 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="BookSleeve">
+      <HintPath>..\lib\redis\BookSleeve.dll</HintPath>
+    </Reference>
     <Reference Include="log4net">
       <HintPath>..\lib\log4net\net_4_0\log4net.dll</HintPath>
     </Reference>
     <Reference Include="System" />
+    <Reference Include="System.configuration" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
@@ -45,10 +49,13 @@
   <ItemGroup>
     <Compile Include="UrlBlacklist\HashsetBlacklist.cs" />
     <Compile Include="UrlBlacklist\IUrlBlacklist.cs" />
+    <Compile Include="UrlBlacklist\RedisBlacklist.cs" />
     <Compile Include="UrlProvider\InMemoryUrlProvider.cs" />
     <Compile Include="UrlProvider\IUrlProvider.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="UrlProvider\RedisUrlProvider.cs" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

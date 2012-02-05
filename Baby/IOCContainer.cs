@@ -3,6 +3,7 @@ using Baby.Crawler.PageFetching;
 using Baby.UrlFiltering;
 using log4net;
 using Microsoft.Practices.Unity;
+using Baby.Data;
 
 namespace Baby
 {
@@ -23,7 +24,7 @@ namespace Baby
             s_container = new UnityContainer();
             s_container.RegisterType<IAsyncWebpageProvider, GZipWebClient>();
             s_container.RegisterType<IAsyncEmailAndUrlListProvider, WebpageScraper>();
-            s_container.RegisterType<IUrlBlacklist, HashsetBlacklist>();
+            s_container.RegisterType<IUrlBlacklist, RedisBlacklist>();
 
             foreach (ContainerRegistration reg in s_container.Registrations)
             {
