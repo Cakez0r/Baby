@@ -16,6 +16,7 @@ namespace Baby.Crawler
     public class WebpageScraper : IAsyncEmailAndUrlListProvider
     {
         private static ILog s_logger = LogManager.GetLogger(typeof(WebpageScraper));
+        private static ILog s_scrapeLogger = LogManager.GetLogger("scrapes");
 
         /// <summary>
         /// Used to represent the current state of a scraper
@@ -29,40 +30,21 @@ namespace Baby.Crawler
         }
 
         /// <summary>
-        /// Matches base href tags, which specify a prefix for all hrefs
-        /// </summary>
-        private const string REGEX_MATCH_BASE_HREF = "base href=\"?([a-zA-Z]|[0-9]|\\(|\\)|\\*|=|,|;|\\$|!|~|#|@|\\.|/|:|&|\\?|\\+|\\.|-|_)+\"?";
-
-        /// <summary>
-        /// Matches a link url
-        /// </summary>
-        private const string REGEX_MATCH_URL = "href=\"?([a-zA-Z]|[0-9]|\\(|\\)|\\*|=|,|;|\\$|!|~|#|@|\\.|/|:|&|\\?|\\+|\\.|-|_)+\"?";
-
-        /// <summary>
-        /// Matches an email address
-        /// </summary>
-        private const string REGEX_MATCH_EMAIL = "([a-zA-Z]|[0-9]|\\.|-|_)+@([a-zA-Z]+)\\.(com|co\\.uk)";
-
-        /// <summary>
         /// Empty lists to use where needed, so we don't go nuts on memory allocation
         /// </summary>
         private static readonly ReadOnlyCollection<Uri> s_emptyUriList = new List<Uri>().AsReadOnly();
         private static readonly ReadOnlyCollection<EmailAddress> s_emptyEmailList = new List<EmailAddress>().AsReadOnly();
 
         /// <summary>
-        /// Link matching regex
-        /// </summary>
-        private static readonly Regex s_urlRegex;
-
-        /// <summary>
         /// Email matching regex
+        /// TODO: Make this better...
         /// </summary>
-        private static readonly Regex s_emailRegex;
+        private static readonly Regex s_emailRegex = new Regex("([a-zA-Z]|[0-9]|\\.|-|_)+@([a-zA-Z]+)\\.(com|co\\.uk)", RegexOptions.Compiled | RegexOptions.Singleline | RegexOptions.IgnoreCase);
 
         /// <summary>
         /// Base href matching regex
         /// </summary>
-        private static readonly Regex s_baseHrefRegex;
+        private static readonly Regex s_baseHrefRegex = new Regex("base href=\"(?<1>[^\"]*)\"", RegexOptions.Compiled | RegexOptions.Singleline | RegexOptions.IgnoreCase);
 
 
         /// <summary>
@@ -137,15 +119,6 @@ namespace Baby.Crawler
         /// </summary>
         IUrlProvider m_urlProvider;
 
-        /// <summary>
-        /// Initialize statics
-        /// </summary>
-        static WebpageScraper()
-        {
-            s_urlRegex = new Regex(REGEX_MATCH_URL, RegexOptions.Compiled | RegexOptions.IgnoreCase);
-            s_emailRegex = new Regex(REGEX_MATCH_EMAIL, RegexOptions.Compiled | RegexOptions.IgnoreCase);
-            s_baseHrefRegex = new Regex(REGEX_MATCH_BASE_HREF, RegexOptions.Compiled | RegexOptions.IgnoreCase);
-        }
 
         /// <summary>
         /// Create a new web scraper.
@@ -169,7 +142,7 @@ namespace Baby.Crawler
             //Only start if scraper hasn't already ran
             if (State == WebpageScraperState.Idle)
             {
-                s_logger.DebugFormat("Starting scrape of URL {0}", Url != null ? Url.AbsoluteUri : "NULL URL");
+                s_scrapeLogger.InfoFormat("Starting scrape of URL {0}", Url != null ? Url.AbsoluteUri : "NULL URL");
 
                 //Don't show any results yet
                 Emails = s_emptyEmailList;
@@ -249,38 +222,36 @@ namespace Baby.Crawler
 
             //See if this page has a base href specified
             string baseUrl = null;
-            Match baseUrlMatch = Regex.Match(html, REGEX_MATCH_BASE_HREF);
+            Match baseUrlMatch = s_baseHrefRegex.Match(html);
             if (baseUrlMatch.Success)
             {
-                baseUrl = StripBaseHrefGarbage(baseUrlMatch.Value);
+                baseUrl = baseUrlMatch.Groups[1].Value;
             }
 
-            Match match = null;
+            string link;
             int startIndex = 0;
 
             //Start iterating matches for links on the page
-            while ((match = s_urlRegex.Match(html, startIndex)).Success)
+            while ((link = FastLinkMatch.GetNextUrl(ref html, startIndex, out startIndex)) != null)
             {
-                //Remove any junk captured by the regex
-                string link = StripLinkGarbage(match.Value);
-
                 //Handle special links
                 if (link.StartsWith("mailto:"))
                 {
                     //TODO: Pick this up with ExtractEmails
-                    startIndex += 7;
                     continue;
                 }
                 else if (link.StartsWith("javascript:"))
                 {
                     //Ignore JS
-                    startIndex += 11;
                     continue;
                 }
                 else if (link.StartsWith("#"))
                 {
                     //Ignore # links (links to the same page!)
-                    startIndex++;
+                    continue;
+                }
+                else if (link.Length == 0)
+                {
                     continue;
                 }
                 else if (link.StartsWith("//"))
@@ -314,9 +285,8 @@ namespace Baby.Crawler
                 }
                 catch
                 {
-                    s_logger.DebugFormat("Matched an invalid link {0} found on url {1}", match.Value, Url.AbsoluteUri);
+                    s_logger.DebugFormat("Matched an invalid link {0} found on url {1}", link, Url.AbsoluteUri);
                 }
-                startIndex = match.Index + 1;
             }
 
             return links;
@@ -344,22 +314,6 @@ namespace Baby.Crawler
             }
 
             return emails;
-        }
-
-        /// <summary>
-        /// Helper to remove any extra garbage captured by the link regex
-        /// </summary>
-        private static string StripLinkGarbage(string link)
-        {
-            return link.Substring(5).Trim('"');
-        }
-
-        /// <summary>
-        /// Helper to remove any extra garbage captured by the base href regex
-        /// </summary>
-        private static string StripBaseHrefGarbage(string baseHref)
-        {
-            return baseHref.Substring(10).Trim('"');
         }
 
         /// <summary>

@@ -21,6 +21,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -29,6 +30,7 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="log4net">
@@ -46,6 +48,7 @@
     <Compile Include="Crawler.cs" />
     <Compile Include="EmailFetching\EmailAddress.cs" />
     <Compile Include="EmailFetching\IAsyncEmailListProvider.cs" />
+    <Compile Include="FastLinkMatch.cs" />
     <Compile Include="IEmailAndUrlListProvider.cs" />
     <Compile Include="PageFetching\GZipWebclient.cs">
       <SubType>Component</SubType>

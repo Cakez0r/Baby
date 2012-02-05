@@ -37,6 +37,8 @@ namespace Baby.Crawler.PageFetching
                             errorCallback(e.Error, this);
                         }
                     }
+
+                    Dispose(true);
                 };
 
             this.DownloadStringAsync(url);

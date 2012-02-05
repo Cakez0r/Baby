@@ -9,6 +9,7 @@ using Baby.Data;
 using Baby.UrlFiltering;
 using log4net;
 using Microsoft.Practices.Unity;
+using System.Net;
 
 namespace Baby
 {
@@ -23,12 +24,14 @@ namespace Baby
         static URLFilter s_urlFilter;
         static IUrlBlacklist s_visitedUrls;
 
-        const int SCRAPER_LIMIT = 1;
+        const int SCRAPER_LIMIT = 50;
         static int s_scraperCount = 0;
 
         private static ILog s_logger = LogManager.GetLogger(typeof(Program));
         private static ILog s_emailLogger = LogManager.GetLogger("emails");
         private static ILog s_urlLogger = LogManager.GetLogger("urls");
+
+        static HashSet<string> s_emails = new HashSet<string>();
 
         static void InitializeLogging()
         {
@@ -37,6 +40,8 @@ namespace Baby
 
         static void Main(string[] args)
         {
+            ServicePointManager.DefaultConnectionLimit = SCRAPER_LIMIT;
+
             InitializeLogging();
             s_logger.Info("Baby is starting!");
 
@@ -116,7 +121,14 @@ namespace Baby
             s_logger.DebugFormat("Email list received from scraper ({0})", provider.Source);
             foreach (EmailAddress email in emails)
             {
-                s_emailLogger.Info(email.Email);
+                lock (s_emails)
+                {
+                    if (!s_emails.Contains(email.Email))
+                    {
+                        s_emails.Add(email.Email);
+                        s_emailLogger.InfoFormat("Found email {0} at {1}", email.Email, provider.Source);
+                    }
+                }
             }
         }
 
@@ -142,7 +154,7 @@ namespace Baby
 
         static void HandleError<T>(Exception ex, T provider)
         {
-            s_logger.ErrorFormat("Exception occurred on scraper ({0}: {1}", (provider as WebpageScraper).Source, ex);
+            s_logger.ErrorFormat("Exception occurred on scraper ({0}): {1}", (provider as WebpageScraper).Source, ex.Message);
             s_scraperCount--;
         }
     }
