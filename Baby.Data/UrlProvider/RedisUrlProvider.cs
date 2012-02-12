@@ -3,6 +3,7 @@ using log4net;
 using BookSleeve;
 using System.Threading.Tasks;
 using System.Configuration;
+using System.Collections.Generic;
 
 namespace Baby.Data
 {
@@ -10,9 +11,20 @@ namespace Baby.Data
     {
         private const string REDIS_QUEUE_NAME = "UrlProvider";
 
-        private static ILog s_logger = LogManager.GetLogger(typeof(IUrlBlacklist));
+        private static ILog s_logger = LogManager.GetLogger(typeof(IUrlProvider));
 
-        RedisConnection m_redisConnection = new RedisConnection(ConfigurationManager.AppSettings["RedisHost"]);
+        private RedisConnection m_redisConnection = new RedisConnection(ConfigurationManager.AppSettings["RedisHost"]);
+
+        public long UrlCount
+        {
+            get 
+            {
+                Task<long> result = m_redisConnection.Lists.GetLength(0, REDIS_QUEUE_NAME);
+                result.Wait();
+
+                return result.Result; //Truncation shouldn't be a problem here... Should it? :P
+            }
+        }
 
         public RedisUrlProvider()
         {
@@ -46,6 +58,27 @@ namespace Baby.Data
         public void EnqueueUrl(Uri url)
         {
             m_redisConnection.Lists.AddLast(0, REDIS_QUEUE_NAME, url.AbsoluteUri);
+        }
+
+        public void Dispose()
+        {
+            m_redisConnection.Dispose();
+        }
+
+
+        public IList<Uri> GetUrls(int count)
+        {
+            Task<string[]> result = m_redisConnection.Lists.RangeString(0, REDIS_QUEUE_NAME, 0, count, false);
+            result.Wait();
+
+            List<Uri> urls = new List<Uri>(result.Result.Length);
+
+            foreach (string url in result.Result)
+            {
+                urls.Add(new Uri(url));
+            }
+
+            return urls;
         }
     }
 }

@@ -39,7 +39,7 @@ namespace Baby.Crawler
         /// Email matching regex
         /// TODO: Make this better...
         /// </summary>
-        private static readonly Regex s_emailRegex = new Regex("([a-zA-Z]|[0-9]|\\.|-|_)+@([a-zA-Z]+)\\.(com|co\\.uk)", RegexOptions.Compiled | RegexOptions.Singleline | RegexOptions.IgnoreCase);
+        private static readonly Regex s_emailRegex = new Regex(@"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}\b", RegexOptions.Compiled | RegexOptions.Singleline | RegexOptions.IgnoreCase);
 
         /// <summary>
         /// Base href matching regex
@@ -114,11 +114,6 @@ namespace Baby.Crawler
         /// </summary>
         IAsyncWebpageProvider m_webpageProvider;
 
-        /// <summary>
-        /// Object used for determining which URL to scrape
-        /// </summary>
-        IUrlProvider m_urlProvider;
-
 
         /// <summary>
         /// Create a new web scraper.
@@ -126,7 +121,6 @@ namespace Baby.Crawler
         /// <param name="url">The URL to begin traversing at</param>
         public WebpageScraper(IUrlProvider urlProvider, IAsyncWebpageProvider webpageProvider)
         {
-            m_urlProvider = urlProvider;
             Url = urlProvider.GetUri();
             m_webpageProvider = webpageProvider;
             State = WebpageScraperState.Idle;
@@ -302,13 +296,13 @@ namespace Baby.Crawler
             List<EmailAddress> emails = new List<EmailAddress>();
 
             //Iterate matches for email addresses
-            Match match = null;
-            int startIndex = 0;
-            while ((match = s_emailRegex.Match(html, startIndex)).Success)
+            //Match match = null;
+            //int startIndex = 0;
+            MatchCollection matches = s_emailRegex.Matches(html);
+            foreach (Match match in matches)
             {
                 //Add the email to the results and keep scanning
                 emails.Add(new EmailAddress(match.Value));
-                startIndex = match.Index + match.Value.Length;
 
                 s_logger.DebugFormat("Found an email {0} on url {1}", match.Value, Url.AbsoluteUri);
             }

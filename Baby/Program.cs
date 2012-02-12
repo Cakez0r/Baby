@@ -19,8 +19,6 @@ namespace Baby
     /// </summary>
     class Program
     {
-        static IUrlProvider s_urlProvider = new RedisUrlProvider();
-
         static URLFilter s_urlFilter;
         static IUrlBlacklist s_visitedUrls;
 
@@ -33,6 +31,8 @@ namespace Baby
 
         static HashSet<string> s_emails = new HashSet<string>();
 
+        private static CachedUrlProvider<MySQLUrlProvider, RedisUrlProvider> s_urlProvider = new CachedUrlProvider<MySQLUrlProvider, RedisUrlProvider>();
+
         static void InitializeLogging()
         {
             log4net.Config.XmlConfigurator.Configure(new FileInfo("log4net.config"));
@@ -40,16 +40,15 @@ namespace Baby
 
         static void Main(string[] args)
         {
-            ServicePointManager.DefaultConnectionLimit = SCRAPER_LIMIT;
+            ServicePointManager.DefaultConnectionLimit = SCRAPER_LIMIT * 2;
 
             InitializeLogging();
             s_logger.Info("Baby is starting!");
 
             s_logger.DebugFormat("Scraper limit set to {0}", SCRAPER_LIMIT);
 
-            s_logger.Debug("Registering URL provider...");
+            s_logger.DebugFormat("Registering URL Provider...");
             IOCContainer.Instance.RegisterInstance<IUrlProvider>(s_urlProvider);
-            s_urlProvider.EnqueueUrl(new Uri("http://www.4chan.org"));
 
             s_logger.Debug("Resolving url blacklist...");
             s_visitedUrls = IOCContainer.Instance.Resolve<IUrlBlacklist>();
@@ -102,19 +101,26 @@ namespace Baby
 
             filter.AddRule("Already visited", StandardUrlFilterRules.MakeRejectUrlInBlacklistRule(visitedUrlBlacklist));
 
-            filter.AddRule("Must be on 4chan.org", StandardUrlFilterRules.MakeUrlMustContainRule("4chan.org"));
+            //filter.AddRule("Must be on 4chan.org", StandardUrlFilterRules.MakeUrlMustContainRule("4chan.org"));
 
             return filter;
         }
 
         static void SpawnScraper()
         {
-            IAsyncEmailAndUrlListProvider scraper = IOCContainer.Instance.Resolve<IAsyncEmailAndUrlListProvider>();
+            try
+            {
+                IAsyncEmailAndUrlListProvider scraper = IOCContainer.Instance.Resolve<IAsyncEmailAndUrlListProvider>();
 
-            s_scraperCount++;
+                s_scraperCount++;
 
-            scraper.GetEmailListAsync(HandleEmailList, HandleError<IAsyncEmailListProvider>);
-            scraper.GetUrlListAsync(HandleUrlList, HandleError<IAsyncUrlListProvider>);
+                scraper.GetEmailListAsync(HandleEmailList, HandleError<IAsyncEmailListProvider>);
+                scraper.GetUrlListAsync(HandleUrlList, HandleError<IAsyncUrlListProvider>);
+            }
+            catch (Exception ex)
+            {
+                s_logger.ErrorFormat("Failed to spawn a scraper: {0}", ex);
+            }
         }
 
         static void HandleEmailList(IList<EmailAddress> emails, IAsyncEmailListProvider provider)
@@ -136,6 +142,7 @@ namespace Baby
         static void HandleUrlList(IList<Uri> urls, IAsyncUrlListProvider provider)
         {
             s_logger.DebugFormat("Url list received from scraper ID ", provider.Source);
+
             foreach (Uri url in urls)
             {
                 if (s_urlFilter.IsUrlValid(url))

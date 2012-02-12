@@ -24,7 +24,7 @@ namespace Baby
             s_container = new UnityContainer();
             s_container.RegisterType<IAsyncWebpageProvider, GZipWebClient>();
             s_container.RegisterType<IAsyncEmailAndUrlListProvider, WebpageScraper>();
-            s_container.RegisterType<IUrlBlacklist, RedisBlacklist>();
+            s_container.RegisterType<IUrlBlacklist, HashsetBlacklist>();
 
             foreach (ContainerRegistration reg in s_container.Registrations)
             {

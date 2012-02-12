@@ -10,6 +10,11 @@ namespace Baby.Data
 
         Queue<Uri> m_urls;
 
+        public long UrlCount
+        {
+            get { return m_urls.Count; }
+        }
+
         public InMemoryUrlProvider()
         {
             m_urls = new Queue<Uri>();
@@ -39,6 +44,28 @@ namespace Baby.Data
             s_logger.DebugFormat("Returning URL {0}", url != null ? url.AbsoluteUri : "NULL");
 
             return url;
+        }
+
+        public void Dispose()
+        {
+            m_urls.Clear();
+            m_urls = null;
+        }
+
+
+        public IList<Uri> GetUrls(int count)
+        {
+            lock (m_urls)
+            {
+                Uri[] urls = new Uri[Math.Min(count, m_urls.Count)];
+
+                for (int i = 0; i < urls.Length; i++)
+                {
+                    urls[i] = m_urls.Dequeue();
+                }
+
+                return urls;
+            }
         }
     }
 }
